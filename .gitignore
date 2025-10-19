@@ -1,0 +1,48 @@
+# Dependencias de Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de configuración sensibles
+credentials.json
+token.json
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Datos de WhatsApp Web
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Archivos de autenticación de Google
+auth_info/
+*.json
+
+# Logs
+logs/
+*.log
+
+# Archivos temporales
+.tmp/
+temp/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de backup
+*.bak
+*.backup
+
+# Archivos de configuración local
+config.local.js
+settings.local.json
