@@ -230,7 +230,7 @@ async function handleNameInput(message, phoneNumber, text) {
                 service = SERVICES.CUT_WITH_BEARD;
                 break;
             case 3:
-                service = SERVICES.BEARD_ONLY;
+                service = SERVICES.SIMPLE_SERVICE;
                 break;
         }
         
