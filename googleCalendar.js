@@ -40,17 +40,26 @@ function getAccessToken(oAuth2Client) {
   });
 }
 
-export async function createEvent(auth, { summary, description, startTime, endTime }) {
+export async function createEvent(auth, { summary, description, startTime, endTime, barberCalendarId = null }) {
   const calendar = google.calendar({ version: "v3", auth });
   
-  // Obtener la lista de calendarios para encontrar el calendario configurado
-  const calendarList = await calendar.calendarList.list();
-  const targetCalendar = calendarList.data.items.find(cal => 
-    cal.summary === CALENDAR_ID
-  );
+  let calendarId;
   
-  // Usar el calendario configurado si existe, sino usar "primary"
-  const calendarId = targetCalendar ? targetCalendar.id : "primary";
+  if (barberCalendarId) {
+    // Si se especifica un calendario de barbero, usarlo directamente
+    const calendarList = await calendar.calendarList.list();
+    const targetCalendar = calendarList.data.items.find(cal => 
+      cal.summary === barberCalendarId
+    );
+    calendarId = targetCalendar ? targetCalendar.id : "primary";
+  } else {
+    // Usar el calendario por defecto
+    const calendarList = await calendar.calendarList.list();
+    const targetCalendar = calendarList.data.items.find(cal => 
+      cal.summary === CALENDAR_ID
+    );
+    calendarId = targetCalendar ? targetCalendar.id : "primary";
+  }
   
   const event = {
     summary,
@@ -74,17 +83,26 @@ export async function createEvent(auth, { summary, description, startTime, endTi
 }
 
 // Función para obtener citas existentes de un día específico
-export async function getExistingAppointments(auth, date) {
+export async function getExistingAppointments(auth, date, barberCalendarId = null) {
   const calendar = google.calendar({ version: "v3", auth });
   
-  // Obtener la lista de calendarios para encontrar el calendario configurado
-  const calendarList = await calendar.calendarList.list();
-  const targetCalendar = calendarList.data.items.find(cal => 
-    cal.summary === CALENDAR_ID
-  );
+  let calendarId;
   
-  // Usar el calendario configurado si existe, sino usar "primary"
-  const calendarId = targetCalendar ? targetCalendar.id : "primary";
+  if (barberCalendarId) {
+    // Si se especifica un calendario de barbero, usarlo directamente
+    const calendarList = await calendar.calendarList.list();
+    const targetCalendar = calendarList.data.items.find(cal => 
+      cal.summary === barberCalendarId
+    );
+    calendarId = targetCalendar ? targetCalendar.id : "primary";
+  } else {
+    // Usar el calendario por defecto
+    const calendarList = await calendar.calendarList.list();
+    const targetCalendar = calendarList.data.items.find(cal => 
+      cal.summary === CALENDAR_ID
+    );
+    calendarId = targetCalendar ? targetCalendar.id : "primary";
+  }
   
   // Crear rango de tiempo para el día completo
   const startOfDay = new Date(date);
