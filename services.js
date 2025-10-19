@@ -2,8 +2,8 @@
 export const SERVICES = {
   SIMPLE_CUT: {
     id: 1,
-    name: "Corte sencillo",
-    description: "Corte de cabello básico",
+    name: "Corte",
+    description: "Corte desvanecido y corte con tijera arriba",
     duration: parseInt(process.env.SERVICE_SIMPLE_CUT_DURATION) || 30, // minutos
     price: parseInt(process.env.SERVICE_SIMPLE_CUT_PRICE) || 20000, // pesos colombianos
     emoji: "✂️"
@@ -11,17 +11,17 @@ export const SERVICES = {
   CUT_WITH_BEARD: {
     id: 2,
     name: "Corte con barba",
-    description: "Corte completo con barba",
+    description: "corte completo con desvanecido, tijera arriba, diseño y perfilación de barba",
     duration: parseInt(process.env.SERVICE_CUT_WITH_BEARD_DURATION) || 45, // minutos
     price: parseInt(process.env.SERVICE_CUT_WITH_BEARD_PRICE) || 25000, // pesos colombianos
     emoji: "🧔"
   },
-  BEARD_ONLY: {
+  SIMPLE_SERVICE: {
     id: 3,
-    name: "Solo barba",
-    description: "Cita para cortar solo barba",
-    duration: parseInt(process.env.SERVICE_BEARD_ONLY_DURATION) || 15, // minutos
-    price: parseInt(process.env.SERVICE_BEARD_ONLY_PRICE) || 10000, // pesos colombianos
+    name: "Servicio sencillo",
+    description: "Marcarse la barba, hacerse unas bases a los lados, marcarse el cerquillo",
+    duration: parseInt(process.env.SERVICE_SIMPLE_SERVICE_DURATION) || 15, // minutos
+    price: parseInt(process.env.SERVICE_SIMPLE_SERVICE_PRICE) || 12000, // pesos colombianos
     emoji: "🪒"
   }
 };
@@ -93,7 +93,7 @@ export function getServiceMenu() {
 
 1. ${SERVICES.SIMPLE_CUT.emoji} ${SERVICES.SIMPLE_CUT.name} - $${SERVICES.SIMPLE_CUT.price.toLocaleString()} COP
 2. ${SERVICES.CUT_WITH_BEARD.emoji} ${SERVICES.CUT_WITH_BEARD.name} - $${SERVICES.CUT_WITH_BEARD.price.toLocaleString()} COP  
-3. ${SERVICES.BEARD_ONLY.emoji} ${SERVICES.BEARD_ONLY.name} - $${SERVICES.BEARD_ONLY.price.toLocaleString()} COP
+3. ${SERVICES.SIMPLE_SERVICE.emoji} ${SERVICES.SIMPLE_SERVICE.name} - $${SERVICES.SIMPLE_SERVICE.price.toLocaleString()} COP
 
 Por favor, responde con el número del servicio que prefieras:`;
 }
@@ -112,10 +112,10 @@ ${SERVICES.CUT_WITH_BEARD.emoji} ${SERVICES.CUT_WITH_BEARD.name}
    ⏱️ Duración: ${SERVICES.CUT_WITH_BEARD.duration} minutos
    💰 Precio: $${SERVICES.CUT_WITH_BEARD.price.toLocaleString()} COP
 
-${SERVICES.BEARD_ONLY.emoji} ${SERVICES.BEARD_ONLY.name}
-   ${SERVICES.BEARD_ONLY.description}
-   ⏱️ Duración: ${SERVICES.BEARD_ONLY.duration} minutos
-   💰 Precio: $${SERVICES.BEARD_ONLY.price.toLocaleString()} COP
+${SERVICES.SIMPLE_SERVICE.emoji} ${SERVICES.SIMPLE_SERVICE.name}
+   ${SERVICES.SIMPLE_SERVICE.description}
+   ⏱️ Duración: ${SERVICES.SIMPLE_SERVICE.duration} minutos
+   💰 Precio: $${SERVICES.SIMPLE_SERVICE.price.toLocaleString()} COP
 
 ¿Te gustaría agendar alguno de estos servicios? Responde con el número de la opción que prefieras.`;
 }
