@@ -6,10 +6,14 @@ import dotenv from "dotenv";
 import { authorizeGoogle, createEvent, getExistingAppointments } from "./googleCalendar.js";
 import {
     SERVICES,
+    BARBERS,
     CONVERSATION_STATES,
     getMainMenu,
+    getBarberMenu,
+    getServiceMenu,
     getServicesAndPrices,
     getServiceById,
+    getBarberById,
     isWithinBusinessHours,
     getAvailableTimeSlots
 } from "./services.js";
@@ -114,6 +118,10 @@ async function handleMessage(message, phoneNumber, text) {
             console.log("🔄 Procesando selección de menú");
             await handleMenuSelection(message, phoneNumber, text);
             break;
+        case CONVERSATION_STATES.SELECTING_BARBER:
+            console.log("🔄 Procesando selección de barbero");
+            await handleBarberSelection(message, phoneNumber, text);
+            break;
         case CONVERSATION_STATES.COLLECTING_NAME:
             console.log("🔄 Procesando entrada de nombre");
             await handleNameInput(message, phoneNumber, text);
@@ -163,37 +171,84 @@ async function handleMenuSelection(message, phoneNumber, text) {
     const option = text.trim();
 
     if (option === "1") {
-        // Agendar corte sencillo
-        const service = SERVICES.SIMPLE_CUT;
+        // Agendar cita - mostrar menú de barberos
         conversationManager.updateConversationState(phoneNumber, {
-            state: CONVERSATION_STATES.COLLECTING_NAME,
-            selectedService: service
+            state: CONVERSATION_STATES.SELECTING_BARBER
         });
-        await message.reply(`✂️ Perfecto! Has seleccionado: ${service.name}\n💰 Precio: $${service.price.toLocaleString()} COP\n⏱️ Duración: ${service.duration} minutos\n\nPor favor, escribe tu nombre completo:`);
+        await message.reply(getBarberMenu());
     } else if (option === "2") {
-        // Agendar corte con barba
-        const service = SERVICES.CUT_WITH_BEARD;
-        conversationManager.updateConversationState(phoneNumber, {
-            state: CONVERSATION_STATES.COLLECTING_NAME,
-            selectedService: service
-        });
-        await message.reply(`🧔 Perfecto! Has seleccionado: ${service.name}\n💰 Precio: $${service.price.toLocaleString()} COP\n⏱️ Duración: ${service.duration} minutos\n\nPor favor, escribe tu nombre completo:`);
-    } else if (option === "3") {
         // Mostrar servicios y precios
         await message.reply(getServicesAndPrices());
     } else {
-        await message.reply("❌ Opción no válida. Por favor, responde con 1, 2 o 3.\n\n💡 Si quieres empezar de nuevo, escribe 'hola' o 'menu'.");
+        await message.reply("❌ Opción no válida. Por favor, responde con 1 o 2.\n\n💡 Si quieres empezar de nuevo, escribe 'hola' o 'menu'.");
+    }
+}
+
+// Manejar selección de barbero
+async function handleBarberSelection(message, phoneNumber, text) {
+    const option = text.trim();
+
+    if (option === "1") {
+        // Seleccionar Mauricio
+        const barber = BARBERS.BARBER_1;
+        conversationManager.updateConversationState(phoneNumber, {
+            state: CONVERSATION_STATES.COLLECTING_NAME,
+            selectedBarber: barber
+        });
+        await message.reply(`👨‍💼 Perfecto! Has seleccionado a ${barber.name}\n\nAhora selecciona el servicio que deseas:\n\n${getServiceMenu()}`);
+    } else if (option === "2") {
+        // Seleccionar Stiven
+        const barber = BARBERS.BARBER_2;
+        conversationManager.updateConversationState(phoneNumber, {
+            state: CONVERSATION_STATES.COLLECTING_NAME,
+            selectedBarber: barber
+        });
+        await message.reply(`👨‍💼 Perfecto! Has seleccionado a ${barber.name}\n\nAhora selecciona el servicio que deseas:\n\n${getServiceMenu()}`);
+    } else {
+        await message.reply("❌ Opción no válida. Por favor, responde con 1 o 2.\n\n💡 Si quieres empezar de nuevo, escribe 'hola' o 'menu'.");
     }
 }
 
 // Manejar entrada del nombre
 async function handleNameInput(message, phoneNumber, text) {
     const name = text.trim();
+    const conversationState = conversationManager.getConversationState(phoneNumber);
+    
+    console.log(`🔍 handleNameInput - Estado: ${conversationState.state}, Texto: "${text}"`);
+    
+    // Verificar si es una selección de servicio (solo si venimos de selección de barbero)
+    if (conversationState.state === CONVERSATION_STATES.COLLECTING_NAME && 
+        (text === "1" || text === "2" || text === "3")) {
+        const serviceId = parseInt(text);
+        let service;
+        
+        switch(serviceId) {
+            case 1:
+                service = SERVICES.SIMPLE_CUT;
+                break;
+            case 2:
+                service = SERVICES.CUT_WITH_BEARD;
+                break;
+            case 3:
+                service = SERVICES.BEARD_ONLY;
+                break;
+        }
+        
+        if (service) {
+            conversationManager.updateConversationState(phoneNumber, {
+                selectedService: service
+            });
+            await message.reply(`✂️ Perfecto! Has seleccionado: ${service.emoji} ${service.name}\n💰 Precio: $${service.price.toLocaleString()} COP\n⏱️ Duración: ${service.duration} minutos\n\nPor favor, escribe tu nombre completo:`);
+            return;
+        }
+    }
+    
     if (name.length < 2) {
         await message.reply("❌ Por favor, escribe tu nombre completo (mínimo 2 caracteres):");
         return;
     }
 
+    console.log(`✅ Guardando nombre: "${name}" para ${phoneNumber}`);
     conversationManager.updateConversationState(phoneNumber, {
         state: CONVERSATION_STATES.COLLECTING_PHONE,
         clientName: name
@@ -299,9 +354,11 @@ async function handleDateSelection(message, phoneNumber, text) {
         selectedDate: dateInput
     });
 
-    // Obtener citas existentes para esta fecha
-    const existingAppointments = await getExistingAppointments(calendarAuth, selectedDate);
-    console.log(`📅 Citas existentes para ${dateInput}:`, existingAppointments.length);
+    // Obtener citas existentes para esta fecha del barbero seleccionado
+    const conversationState = conversationManager.getConversationState(phoneNumber);
+    const barberCalendarId = conversationState.selectedBarber.calendarId;
+    const existingAppointments = await getExistingAppointments(calendarAuth, selectedDate, barberCalendarId);
+    console.log(`📅 Citas existentes para ${dateInput} en ${barberCalendarId}:`, existingAppointments.length);
 
     const timeSlots = getAvailableTimeSlots(selectedDate, conversationManager.getConversationState(phoneNumber).selectedService.duration, existingAppointments);
 
@@ -362,8 +419,9 @@ async function handleTimeSelection(message, phoneNumber, text) {
     const [day, month, year] = conversationState.selectedDate.split('/');
     const selectedDate = new Date(year, month - 1, day);
 
-    // Obtener citas existentes para esta fecha
-    const existingAppointments = await getExistingAppointments(calendarAuth, selectedDate);
+    // Obtener citas existentes para esta fecha del barbero seleccionado
+    const barberCalendarId = conversationState.selectedBarber.calendarId;
+    const existingAppointments = await getExistingAppointments(calendarAuth, selectedDate, barberCalendarId);
     const timeSlots = getAvailableTimeSlots(selectedDate, conversationState.selectedService.duration, existingAppointments);
 
     if (isNaN(timeOption) || timeOption < 1 || timeOption > Math.min(20, timeSlots.length)) {
@@ -405,15 +463,17 @@ async function confirmAppointment(message, phoneNumber) {
         const appointmentDate = new Date(year, month - 1, day, hour, minute);
         const endDate = new Date(appointmentDate.getTime() + (service.duration * 60000));
 
-        // Crear evento en Google Calendar
+        // Crear evento en Google Calendar del barbero seleccionado
+        const barber = appointmentData.barber;
         const eventSummary = `${service.emoji} ${service.name} - ${appointmentData.clientName}`;
-        const eventDescription = `Cliente: ${appointmentData.clientName}\nTeléfono: ${appointmentData.clientPhone}\nServicio: ${service.name}\nPrecio: $${service.price.toLocaleString()} COP\nDuración: ${service.duration} minutos`;
+        const eventDescription = `Cliente: ${appointmentData.clientName}\nTeléfono: ${appointmentData.clientPhone}\nBarbero: ${barber.name}\nServicio: ${service.name}\nPrecio: $${service.price.toLocaleString()} COP\nDuración: ${service.duration} minutos`;
 
         const link = await createEvent(calendarAuth, {
             summary: eventSummary,
             description: eventDescription,
             startTime: appointmentDate,
             endTime: endDate,
+            barberCalendarId: barber.calendarId
         });
 
         // Convertir hora a formato AM/PM para la confirmación final
@@ -427,6 +487,7 @@ async function confirmAppointment(message, phoneNumber) {
         ✅ ${service.emoji} ${service.name}
         👤 Cliente: ${appointmentData.clientName}
         📞 Teléfono: ${appointmentData.clientPhone}
+        👨‍💼 Barbero: ${barber.emoji} ${barber.name}
         📅 Fecha: ${appointmentData.date}
         🕐 Hora: ${timeFormatted}
         💰 Precio: $${service.price.toLocaleString()} COP
