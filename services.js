@@ -36,11 +36,28 @@ export const BUSINESS_HOURS = {
 // Estados de conversación
 export const CONVERSATION_STATES = {
   MENU: "menu",
+  SELECTING_BARBER: "selecting_barber",
   COLLECTING_NAME: "collecting_name",
   COLLECTING_PHONE: "collecting_phone",
   SELECTING_DATE: "selecting_date",
   SELECTING_TIME: "selecting_time",
   CONFIRMING: "confirming"
+};
+
+// Barberos disponibles
+export const BARBERS = {
+  BARBER_1: {
+    id: 1,
+    name: process.env.BARBER_1_NAME || "Mauricio",
+    calendarId: process.env.BARBER_1_CALENDAR_ID || "Citas - Mauricio",
+    emoji: "👨‍💼"
+  },
+  BARBER_2: {
+    id: 2,
+    name: process.env.BARBER_2_NAME || "Stiven", 
+    calendarId: process.env.BARBER_2_CALENDAR_ID || "Citas - Stiven",
+    emoji: "👨‍💼"
+  }
 };
 
 // Función para obtener el menú principal
@@ -52,15 +69,33 @@ Soy tu asistente virtual y estoy aquí para ayudarte a reservar tu turno o respo
 
 ¿Qué te gustaría hacer hoy?:
 
-1. Agendar un corte sencillo ${SERVICES.SIMPLE_CUT.emoji}
-
-2. Agendar un corte con barba ${SERVICES.CUT_WITH_BEARD.emoji}
-
-3. Conocer nuestros servicios y precios 📋
+1. Agendar una cita ✂️
+2. Conocer nuestros servicios y precios 📋
 
 📌 Nota: Nuestro horario de atención es de ${BUSINESS_HOURS.OPEN} a.m. a ${BUSINESS_HOURS.CLOSE} p.m.
 
 Por favor, responde con el número de la opción que prefieras.`;
+}
+
+// Función para obtener el menú de barberos
+export function getBarberMenu() {
+  return `👨‍💼 Selecciona tu barbero preferido:
+
+1. ${BARBERS.BARBER_1.emoji} ${BARBERS.BARBER_1.name}
+2. ${BARBERS.BARBER_2.emoji} ${BARBERS.BARBER_2.name}
+
+Por favor, responde con el número del barbero que prefieras:`;
+}
+
+// Función para obtener el menú de servicios
+export function getServiceMenu() {
+  return `✂️ Selecciona el servicio que deseas:
+
+1. ${SERVICES.SIMPLE_CUT.emoji} ${SERVICES.SIMPLE_CUT.name} - $${SERVICES.SIMPLE_CUT.price.toLocaleString()} COP
+2. ${SERVICES.CUT_WITH_BEARD.emoji} ${SERVICES.CUT_WITH_BEARD.name} - $${SERVICES.CUT_WITH_BEARD.price.toLocaleString()} COP  
+3. ${SERVICES.BEARD_ONLY.emoji} ${SERVICES.BEARD_ONLY.name} - $${SERVICES.BEARD_ONLY.price.toLocaleString()} COP
+
+Por favor, responde con el número del servicio que prefieras:`;
 }
 
 // Función para mostrar servicios y precios
@@ -88,6 +123,11 @@ ${SERVICES.BEARD_ONLY.emoji} ${SERVICES.BEARD_ONLY.name}
 // Función para obtener servicio por ID
 export function getServiceById(id) {
   return Object.values(SERVICES).find(service => service.id === parseInt(id));
+}
+
+// Función para obtener un barbero por ID
+export function getBarberById(id) {
+  return Object.values(BARBERS).find(barber => barber.id === parseInt(id));
 }
 
 // Función para validar horario de atención

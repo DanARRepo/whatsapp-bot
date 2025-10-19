@@ -9,6 +9,7 @@ class ConversationManager {
     if (!this.conversations.has(phoneNumber)) {
       this.conversations.set(phoneNumber, {
         state: 'menu',
+        selectedBarber: null,
         selectedService: null,
         clientName: null,
         clientPhone: null,
@@ -35,6 +36,7 @@ class ConversationManager {
   getAppointmentData(phoneNumber) {
     const state = this.getConversationState(phoneNumber);
     return {
+      barber: state.selectedBarber,
       service: state.selectedService,
       clientName: state.clientName,
       clientPhone: state.clientPhone,
@@ -52,6 +54,7 @@ class ConversationManager {
   getConfirmationMessage(phoneNumber) {
     const data = this.getAppointmentData(phoneNumber);
     const service = data.service;
+    const barber = data.barber;
     
     // Convertir hora a formato AM/PM
     const [hour, minute] = data.time.split(':');
@@ -64,6 +67,7 @@ class ConversationManager {
 
 👤 Cliente: ${data.clientName}
 📞 Teléfono: ${data.clientPhone}
+👨‍💼 Barbero: ${barber.emoji} ${barber.name}
 ✂️ Servicio: ${service.emoji} ${service.name}
 💰 Precio: $${service.price.toLocaleString()} COP
 ⏱️ Duración: ${service.duration} minutos
