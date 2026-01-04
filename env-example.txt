@@ -1,0 +1,65 @@
+# Variables de entorno necesarias para el bot de barbería
+# Copia este contenido a tu archivo .env
+
+# Configuración del bot de WhatsApp
+WHATSAPP_SESSION_NAME=barberia-bot
+
+# Google Calendar
+GOOGLE_CALENDAR_ID=Barberia - Bot
+GOOGLE_TIMEZONE=America/Bogota
+
+# Horarios de atención
+BUSINESS_HOURS_GENERAL_OPEN=09:30
+BUSINESS_HOURS_GENERAL_CLOSE=20:00
+BUSINESS_HOURS_GENERAL_LAST=19:30
+
+BUSINESS_HOURS_EXTRA_OPEN=07:00
+BUSINESS_HOURS_EXTRA_CLOSE=22:00
+BUSINESS_HOURS_EXTRA_LAST=21:30
+
+BUSINESS_HOURS_BREAK_START=13:00
+BUSINESS_HOURS_BREAK_END=14:00
+
+# Servicios y precios
+SERVICE_SIMPLE_CUT_DURATION=30
+SERVICE_SIMPLE_CUT_PRICE=20000
+
+SERVICE_CUT_WITH_BEARD_DURATION=45
+SERVICE_CUT_WITH_BEARD_PRICE=25000
+
+SERVICE_SIMPLE_SERVICE_DURATION=15
+SERVICE_SIMPLE_SERVICE_PRICE=12000
+
+# Barberos
+BARBER_1_NAME=Mauricio
+BARBER_1_CALENDAR_ID=Citas - Mauricio
+
+BARBER_2_NAME=Stiven
+BARBER_2_CALENDAR_ID=Citas - Stiven
+
+# Configuración de recordatorios
+REMINDER_MINUTES=30
+
+# Anticipación mínima para agendar
+MIN_ADVANCE_HOURS=1
+
+# ==============================================
+# PROVEEDOR DE IA
+# ==============================================
+# Proveedor a usar: "gemini" | "perplexity"
+AI_PROVIDER=gemini
+
+# Google Gemini
+GEMINI_ENABLED=true
+GEMINI_API_KEY=tu_api_key_de_gemini
+GEMINI_MODEL=gemini-2.0-flash
+
+# Perplexity
+# Modelos disponibles: sonar, sonar-pro, sonar-reasoning-pro, sonar-deep-research
+# Ver: https://docs.perplexity.ai/getting-started/models
+PERPLEXITY_ENABLED=false
+PERPLEXITY_API_KEY=tu_api_key_de_perplexity
+PERPLEXITY_MODEL=sonar
+
+# Nombre del negocio
+BUSINESS_NAME=Caballeros

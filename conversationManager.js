@@ -41,7 +41,8 @@ class ConversationManager {
       clientName: state.clientName,
       clientPhone: state.clientPhone,
       date: state.selectedDate,
-      time: state.selectedTime
+      time: state.selectedTime,
+      scheduleType: state.scheduleType || 'general'
     };
   }
 
@@ -55,6 +56,12 @@ class ConversationManager {
     const data = this.getAppointmentData(phoneNumber);
     const service = data.service;
     const barber = data.barber;
+    const state = this.getConversationState(phoneNumber);
+    const scheduleType = state.scheduleType || 'general';
+    
+    // Calcular precio según tipo de horario
+    const basePrice = service.price;
+    const finalPrice = scheduleType === 'extra' ? basePrice * 2 : basePrice;
     
     // Convertir hora a formato AM/PM
     const [hour, minute] = data.time.split(':');
@@ -63,13 +70,17 @@ class ConversationManager {
     const ampm = hour24 >= 12 ? 'PM' : 'AM';
     const timeFormatted = `${hour12}:${minute} ${ampm}`;
     
+    // Determinar tipo de horario (solo mostrar si es extra)
+    const scheduleTypeText = scheduleType === 'extra' ? '🌙 Horario Extra (Precio doble)' : '';
+    
     return `📋 CONFIRMACIÓN DE CITA
 
 👤 Cliente: ${data.clientName}
 📞 Teléfono: ${data.clientPhone}
 👨‍💼 Barbero: ${barber.emoji} ${barber.name}
 ✂️ Servicio: ${service.emoji} ${service.name}
-💰 Precio: $${service.price.toLocaleString()} COP
+${scheduleTypeText}
+💰 Precio: $${finalPrice.toLocaleString()} COP
 ⏱️ Duración: ${service.duration} minutos
 📅 Fecha: ${data.date}
 🕐 Hora: ${timeFormatted}
@@ -78,6 +89,8 @@ class ConversationManager {
 ✅ SÍ - para confirmar
 ❌ NO - para cancelar`;
   }
+
+  // Función para obtener mensaje de confirmación con botones
 }
 
 export default ConversationManager;
