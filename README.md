@@ -365,6 +365,6 @@ Para soporte técnico o preguntas sobre el bot, contacta al desarrollador.
 
 ---
 
-**Desarrollado con ❤️ para Caballeros 💈**
+**Desarrollado con ❤️ para Cabelleros 💈**
 
 *Última actualización: Enero 2025*
