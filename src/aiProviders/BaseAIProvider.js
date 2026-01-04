@@ -3,7 +3,8 @@
  * Todos los proveedores (Gemini, Perplexity, etc.) deben extender esta clase
  */
 
-import { getAllServiceAliases, getAllBarberNames } from '../services.js';
+import { getAllServiceAliases } from '../data/services.js';
+import { getAllBarberNames } from '../data/barbers.js';
 
 export default class BaseAIProvider {
   constructor() {
