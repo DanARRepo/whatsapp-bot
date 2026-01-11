@@ -1,14 +1,21 @@
 import fs from "fs";
 import readline from "readline";
 import { google } from "googleapis";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-const TOKEN_PATH = "token.json";
+// Rutas relativas a la raíz del proyecto
+const TOKEN_PATH = path.join(__dirname, "../../token.json");
+const CREDENTIALS_PATH = path.join(__dirname, "../../credentials.json");
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || "primary";
 const TIMEZONE = process.env.GOOGLE_TIMEZONE || "America/Bogota";
 
 export async function authorizeGoogle() {
-  const credentials = JSON.parse(fs.readFileSync("credentials.json"));
+  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH));
   const { client_secret, client_id, redirect_uris } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
