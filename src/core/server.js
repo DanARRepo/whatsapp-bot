@@ -3,6 +3,12 @@
  */
 
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const QR_DIR = path.join(__dirname, "../../qr");
 
 export class WebServer {
   constructor() {
@@ -12,6 +18,9 @@ export class WebServer {
   }
 
   setupRoutes() {
+    // Servir archivos estáticos del directorio QR
+    this.app.use('/qr', express.static(QR_DIR));
+
     // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -23,7 +32,9 @@ export class WebServer {
         message: 'WhatsApp Bot API',
         status: 'running',
         endpoints: {
-          health: '/health'
+          health: '/health',
+          qr: '/qr/qr.html',
+          qrImage: '/qr/qr.png'
         }
       });
     });
