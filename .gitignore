@@ -17,6 +17,10 @@ token.json
 .wwebjs_auth/
 .wwebjs_cache/
 
+# Archivos QR generados
+qr/
+*.png
+
 # Archivos de autenticación de Google
 auth_info/
 *.json
