@@ -19,7 +19,7 @@
         chromium = pkgs.chromium;
 
         # Script wrapper que ejecuta la aplicación
-        # Busca el directorio del proyecto y ejecuta desde ahí
+        # El código fuente viene del flake, los archivos de config del directorio de trabajo
         whatsapp-bot = pkgs.writeShellApplication {
           name = "whatsapp-bot";
           runtimeInputs = [ 
@@ -56,35 +56,106 @@
             pkgs.alsa-lib
             pkgs.libdrm
             pkgs.mesa
+            pkgs.coreutils
           ];
           text = ''
             set -e
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 WhatsApp Bot - Iniciando..."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             
             # Configurar Chromium para puppeteer
             export PUPPETEER_EXECUTABLE_PATH="${chromium}/bin/chromium"
             export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
             
-            # Buscar el directorio del proyecto (donde está package.json)
-            PROJECT_DIR="$PWD"
-            while [ ! -f "$PROJECT_DIR/package.json" ] && [ "$PROJECT_DIR" != "/" ]; do
-              PROJECT_DIR="$(dirname "$PROJECT_DIR")"
-            done
+            # Directorio de trabajo (donde están los archivos de configuración)
+            WORK_DIR="$PWD"
+            echo "📂 Directorio de trabajo: $WORK_DIR"
             
-            if [ ! -f "$PROJECT_DIR/package.json" ]; then
-              echo "❌ Error: No se encontró package.json. Ejecuta desde el directorio del proyecto."
-              exit 1
+            # Buscar el código fuente: primero en el directorio actual, luego hacia arriba
+            if [ -f "package.json" ] && [ -d "src" ]; then
+              # Si estamos en el directorio del proyecto, usarlo directamente
+              PROJECT_DIR="$WORK_DIR"
+              echo "✅ Encontrado package.json en: $PROJECT_DIR"
+            else
+              # Buscar hacia arriba
+              PROJECT_DIR="$WORK_DIR"
+              while [ ! -f "$PROJECT_DIR/package.json" ] && [ "$PROJECT_DIR" != "/" ]; do
+                PROJECT_DIR="$(dirname "$PROJECT_DIR")"
+              done
+              
+              if [ ! -f "$PROJECT_DIR/package.json" ]; then
+                echo "❌ Error: No se encontró package.json."
+                echo "💡 Ejecuta desde el directorio del proyecto o un directorio que contenga package.json"
+                echo "   Directorio actual: $WORK_DIR"
+                exit 1
+              fi
+              echo "✅ Encontrado package.json en: $PROJECT_DIR"
             fi
             
             cd "$PROJECT_DIR"
             
-            # Si no existe node_modules, instalar dependencias
-            if [ ! -d "node_modules" ]; then
-              echo "📦 Instalando dependencias de npm..."
-              npm install --legacy-peer-deps
+            # Verificar que package.json existe
+            if [ ! -f "package.json" ]; then
+              echo "❌ Error: package.json no encontrado en $PROJECT_DIR"
+              exit 1
             fi
             
-            # Ejecutar la aplicación (equivalente a npm start)
+            # SIEMPRE verificar e instalar dependencias
+            echo "🔍 Verificando dependencias en: $PROJECT_DIR"
+            echo "   node_modules existe: $([ -d "node_modules" ] && echo "Sí" || echo "No")"
+            echo "   qrcode instalado: $([ -d "node_modules/qrcode" ] && echo "Sí" || echo "No")"
+            
+            # Si falta node_modules o qrcode, instalar/reinstalar
+            if [ ! -d "node_modules" ] || [ ! -d "node_modules/qrcode" ]; then
+              if [ ! -d "node_modules" ]; then
+                echo "📦 node_modules no existe, instalando dependencias..."
+              else
+                echo "⚠️  La dependencia 'qrcode' no está instalada"
+                echo "📦 Reinstalando todas las dependencias..."
+                rm -rf node_modules package-lock.json
+              fi
+              
+              npm install --legacy-peer-deps || {
+                echo "❌ Error al instalar dependencias"
+                echo "💡 Intentando con npm ci..."
+                npm ci --legacy-peer-deps || {
+                  echo "❌ Error crítico al instalar dependencias"
+                  exit 1
+                }
+              }
+            fi
+            
+            # Verificación final OBLIGATORIA antes de continuar
+            if [ ! -d "node_modules/qrcode" ]; then
+              echo "❌ ERROR CRÍTICO: 'qrcode' no está instalado"
+              echo "📋 Contenido de node_modules:"
+              ls -la node_modules/ 2>/dev/null | head -10 || echo "   (vacío o no existe)"
+              echo "📋 package.json contiene qrcode:"
+              grep -i qrcode package.json || echo "   (no encontrado en package.json)"
+              exit 1
+            fi
+            
+            echo "✅ Dependencias verificadas: qrcode está instalado"
+            
+            # Verificar que src/app.js existe
+            if [ ! -f "src/app.js" ]; then
+              echo "❌ Error: src/app.js no encontrado en $PROJECT_DIR"
+              exit 1
+            fi
+            
+            # Listar algunas dependencias para debug
+            echo "📋 Verificando dependencias instaladas:"
+            ls -d node_modules/qrcode node_modules/whatsapp-web.js node_modules/express 2>/dev/null | head -5 || echo "⚠️  Algunas dependencias no encontradas"
+            
+            # Ejecutar la aplicación
+            echo ""
             echo "🚀 Iniciando WhatsApp Bot..."
+            echo "   Desde: $PROJECT_DIR"
+            echo "   Node: $(which node)"
+            echo "   NPM: $(which npm)"
+            echo ""
             node src/app.js "$@"
           '';
         };
