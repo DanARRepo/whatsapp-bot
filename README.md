@@ -11,6 +11,8 @@ Un bot inteligente para WhatsApp Business que permite a los clientes agendar, re
 - ✅ **Sincronización automática** con Google Calendar
 - ✅ **Múltiples barberos** con calendarios independientes
 - ✅ **Horarios flexibles**: General, Extra (precio doble) y horario de almuerzo
+- ✅ **Servidor web integrado** para acceso al QR y monitoreo
+- ✅ **Soporte para Cloudflare Tunnel** para acceso remoto seguro
 
 ### Procesamiento Inteligente
 - 🤖 **Arquitectura modular de IA** - Soporta múltiples proveedores (Gemini, Perplexity)
@@ -34,24 +36,44 @@ Un bot inteligente para WhatsApp Business que permite a los clientes agendar, re
 
 ## 🏗️ Arquitectura del Proyecto
 
-### Estructura Modular de IA
-
-El proyecto utiliza una arquitectura modular que permite cambiar entre diferentes proveedores de IA sin modificar el código del bot:
+### Estructura de Directorios
 
 ```
 whatsapp-bot/
-├── aiProviders/              # Proveedores de IA modulares
-│   ├── index.js             # Factory y exports principales
-│   ├── BaseAIProvider.js    # Clase base abstracta
-│   ├── GeminiProvider.js    # Implementación para Google Gemini
-│   └── PerplexityProvider.js # Implementación para Perplexity
-├── utils/                    # Utilidades compartidas
-│   └── dateTimeParser.js    # Parsing de fechas/horas (independiente de IA)
-├── index.js                  # Lógica principal del bot
-├── services.js               # Configuración de servicios, barberos y horarios
-├── conversationManager.js    # Manejo de estados de conversación
-├── googleCalendar.js         # Integración con Google Calendar
-└── package.json              # Dependencias del proyecto
+├── src/
+│   ├── aiProviders/              # Proveedores de IA modulares
+│   │   ├── index.js             # Factory y exports principales
+│   │   ├── BaseAIProvider.js    # Clase base abstracta
+│   │   ├── GeminiProvider.js    # Implementación para Google Gemini
+│   │   └── PerplexityProvider.js # Implementación para Perplexity
+│   ├── config/                   # Configuración del sistema
+│   │   ├── business.js          # Configuración del negocio
+│   │   ├── constants.js         # Constantes de la aplicación
+│   │   ├── env.js               # Validación de variables de entorno
+│   │   └── messages.js          # Mensajes del bot
+│   ├── core/                     # Componentes principales
+│   │   ├── server.js            # Servidor Express (QR, health checks)
+│   │   └── whatsapp.js          # Cliente de WhatsApp Web.js
+│   ├── data/                     # Datos y gestión de estado
+│   │   ├── barbers.js           # Configuración de barberos
+│   │   ├── conversationManager.js # Gestión de estados de conversación
+│   │   └── services.js          # Configuración de servicios
+│   ├── flows/                    # Flujos de conversación
+│   │   ├── bookingFlow.js       # Flujo de agendamiento
+│   │   ├── cancelFlow.js        # Flujo de cancelación
+│   │   ├── mainMenu.js          # Menú principal
+│   │   ├── rescheduleFlow.js    # Flujo de reagendamiento
+│   │   └── router.js            # Enrutador de mensajes
+│   ├── services/                 # Servicios externos
+│   │   ├── bookingService.js    # Lógica de negocio para citas
+│   │   └── googleCalendar.js    # Integración con Google Calendar
+│   ├── utils/                    # Utilidades compartidas
+│   │   └── dateTimeParser.js    # Parsing de fechas/horas (independiente de IA)
+│   └── app.js                    # Punto de entrada principal
+├── .env.example                  # Ejemplo de variables de entorno
+├── flake.nix                    # Configuración Nix para desarrollo
+├── package.json                  # Dependencias del proyecto
+└── README.md                     # Este archivo
 ```
 
 ### Proveedores de IA Soportados
@@ -60,6 +82,7 @@ whatsapp-bot/
 - **Modelo por defecto**: `gemini-2.0-flash`
 - **Ventajas**: Generosa capa gratuita, excelente para desarrollo
 - **Configuración**: `AI_PROVIDER=gemini`
+- **Documentación**: Ver `GEMINI_SETUP.md` para detalles de configuración
 
 #### 2. Perplexity
 - **Modelos disponibles**:
@@ -73,6 +96,14 @@ whatsapp-bot/
 
 ## 🛠️ Instalación
 
+### Requisitos Previos
+
+- **Node.js**: v20 o superior
+- **npm**: v9 o superior
+- **Chromium**: Para ejecutar WhatsApp Web.js (se descarga automáticamente o se usa el del sistema)
+- **Google Cloud Project**: Con Google Calendar API habilitada
+- **Cuenta de WhatsApp Business**: Para conectar el bot
+
 ### 1. Clonar el Repositorio
 
 ```bash
@@ -83,8 +114,10 @@ cd whatsapp-bot
 ### 2. Instalar Dependencias
 
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
+
+**Nota**: Se usa `--legacy-peer-deps` debido a incompatibilidades menores entre dependencias.
 
 ### 3. Configurar Google Calendar API
 
@@ -100,20 +133,65 @@ npm install
 Copia el archivo de ejemplo y configura tus valores:
 
 ```bash
-cp env-example.txt .env
+cp .env.example .env
 ```
 
 Edita el archivo `.env` con tus configuraciones (ver sección de Configuración).
 
 ### 5. Ejecutar el Bot
 
+#### Desarrollo Local
+
 ```bash
 npm start
 ```
 
+#### Con Nix (si tienes Nix instalado)
+
+```bash
+nix run .
+```
+
 En la primera ejecución:
-- **WhatsApp**: Escanea el código QR que aparece en la consola
+- **WhatsApp**: Escanea el código QR que aparece en la consola o accede a `http://localhost:3000/qr`
 - **Google Calendar**: Sigue las instrucciones para autorizar el acceso
+
+## 🌐 Servidor Web y Endpoints
+
+El bot incluye un servidor Express que proporciona varios endpoints útiles:
+
+### Endpoints Disponibles
+
+| Endpoint | Descripción | Tipo |
+|----------|-------------|------|
+| `/` | Información del API y lista de endpoints | JSON |
+| `/health` | Health check del servicio | JSON |
+| `/qr` | Página HTML con código QR para WhatsApp | HTML |
+| `/qr/qr.html` | Archivo HTML del QR | HTML |
+| `/qr/qr.png` | Imagen PNG del código QR | PNG |
+| `/api/qr` | Endpoint API para obtener QR como imagen | PNG |
+| `/api/tunnel-url` | URL del túnel de Cloudflare (si está configurado) | JSON |
+
+### Ejemplos de Uso
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Obtener QR como imagen
+curl http://localhost:3000/api/qr -o qr.png
+
+# Obtener información del túnel
+curl http://localhost:3000/api/tunnel-url
+```
+
+### Acceso desde la Red Local
+
+El servidor escucha en todas las interfaces (`0.0.0.0`), por lo que puedes acceder desde otros dispositivos en tu red local:
+
+```
+http://<IP_LOCAL>:3000/qr
+```
 
 ## ⚙️ Configuración
 
@@ -169,32 +247,45 @@ BUSINESS_NAME=Caballeros
 PORT=3000
 ```
 
+#### Configuración de WhatsApp
+
+```env
+WHATSAPP_HEADLESS=true
+```
+
+#### Servicios (Precios en COP)
+
+```env
+SERVICE_SIMPLE_CUT_PRICE=20000
+SERVICE_CUT_WITH_BEARD_PRICE=25000
+SERVICE_SIMPLE_SERVICE_PRICE=12000
+```
+
+#### Duración de Servicios (en minutos)
+
+```env
+SERVICE_SIMPLE_CUT_DURATION=30
+SERVICE_CUT_WITH_BEARD_DURATION=45
+SERVICE_SIMPLE_SERVICE_DURATION=15
+```
+
+#### Barberos
+
+```env
+BARBER_1_NAME=Mauricio
+BARBER_1_CALENDAR_ID=Citas - Mauricio
+BARBER_2_NAME=Stiven
+BARBER_2_CALENDAR_ID=Citas - Stiven
+```
+
 ### Personalización de Servicios y Barberos
 
-Los servicios y barberos se configuran directamente en `services.js`:
+Los servicios y barberos se configuran en los archivos correspondientes:
 
-```javascript
-export const SERVICES = {
-  SIMPLE_CUT: {
-    id: 1,
-    name: "Corte de cabello",
-    price: 20000,
-    duration: 30,
-    emoji: "✂️"
-  },
-  // ...
-};
+- **Servicios**: `src/data/services.js`
+- **Barberos**: `src/data/barbers.js`
 
-export const BARBERS = {
-  BARBER_1: {
-    id: 1,
-    name: "Mauricio",
-    calendarId: "Citas - Mauricio",
-    emoji: "👨‍💼"
-  },
-  // ...
-};
-```
+También puedes usar variables de entorno para personalizar nombres, precios y duraciones.
 
 ## 📱 Flujo de Conversación
 
@@ -260,18 +351,61 @@ GEMINI_API_KEY=tu_api_key
 
 **Nota**: No necesitas modificar código, solo cambiar variables de entorno.
 
-## 🧪 Pruebas
+## 🚀 Despliegue en Producción
 
-### Probar Conexión con Perplexity
+### Despliegue en NixOS
+
+El proyecto incluye un `flake.nix` que define todas las dependencias necesarias para ejecutar el bot en NixOS, incluyendo Chromium y todas sus dependencias del sistema.
+
+**Nota**: Para un despliegue completo en NixOS con systemd, consulta la documentación de NixOS sobre servicios systemd.
+
+### Despliegue con PM2
 
 ```bash
-node -e "import('./aiProviders/index.js').then(async m => { const provider = m.getAIProvider(); console.log('Proveedor:', provider.name); const result = await m.testAIConnection(); console.log('Conexión:', result ? '✅ OK' : '❌ Error'); })"
+# Instalar PM2
+npm install -g pm2
+
+# Iniciar el bot
+pm2 start src/app.js --name whatsapp-bot
+
+# Configurar inicio automático
+pm2 startup
+pm2 save
+```
+
+### Despliegue con Docker
+
+```dockerfile
+FROM node:20-slim
+
+# Instalar dependencias de Chromium
+RUN apt-get update && apt-get install -y \
+    chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
+
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+CMD ["npm", "start"]
+```
+
+## 🧪 Pruebas
+
+### Probar Conexión con IA
+
+```bash
+node -e "import('./src/aiProviders/index.js').then(async m => { const provider = m.getAIProvider(); console.log('Proveedor:', provider.name); const result = await m.testAIConnection(); console.log('Conexión:', result ? '✅ OK' : '❌ Error'); })"
 ```
 
 ### Probar Parsing de Fechas
 
 ```bash
-node -e "import('./utils/dateTimeParser.js').then(m => { console.log('Mañana:', m.parseNaturalDate('mañana')); console.log('3 PM:', m.parseNaturalTime('3 de la tarde')); })"
+node -e "import('./src/utils/dateTimeParser.js').then(m => { console.log('Mañana:', m.parseNaturalDate('mañana')); console.log('3 PM:', m.parseNaturalTime('3 de la tarde')); })"
 ```
 
 ## 🐛 Solución de Problemas
@@ -300,9 +434,27 @@ El bot ahora detecta automáticamente tokens expirados y te guía para re-autori
 
 ### WhatsApp no conecta
 
-1. Elimina la carpeta `auth_info/`
+1. Elimina la carpeta `.wwebjs_auth/`
 2. Reinicia el bot
 3. Escanea el nuevo código QR
+
+**Nota**: Eliminar `.wwebjs_auth/` requiere re-autenticación. Los archivos `SingletonLock` son solo archivos de bloqueo temporales y pueden eliminarse sin perder la sesión.
+
+### Error: "LocalAuth is not compatible with a user-supplied userDataDir"
+
+Este error ocurre si intentas configurar un `userDataDir` personalizado con `LocalAuth`. `LocalAuth` gestiona su propio directorio de sesión automáticamente. No configures `userDataDir` en las opciones de Puppeteer cuando uses `LocalAuth`.
+
+### Problemas con Chromium en NixOS
+
+Si estás desplegando en NixOS y Chromium no inicia correctamente:
+
+1. Asegúrate de que todas las dependencias de Chromium estén instaladas (ver `flake.nix`)
+2. Configura las variables de entorno:
+   ```env
+   PUPPETEER_EXECUTABLE_PATH=/run/current-system/sw/bin/chromium
+   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+   ```
+3. Verifica que el usuario tenga permisos para ejecutar Chromium
 
 ## 📊 Monitoreo de Uso
 
@@ -334,9 +486,11 @@ Asegúrate de que `.gitignore` incluya:
 .env
 credentials.json
 token.json
-auth_info/
+.wwebjs_auth/
 *.log
 node_modules/
+qr/
+tunnel-url.txt
 ```
 
 ### Variables de Entorno
@@ -344,12 +498,21 @@ node_modules/
 - **Nunca** compartas tu `.env` con información sensible
 - **Nunca** subas `credentials.json` o `token.json` a repositorios públicos
 - Rota tus API keys periódicamente
+- Usa diferentes credenciales para desarrollo y producción
+
+### Mejores Prácticas
+
+- Ejecuta el bot con un usuario sin privilegios de administrador
+- Limita el acceso a los endpoints del servidor web
+- Usa HTTPS cuando sea posible (por ejemplo, con Cloudflare Tunnel)
+- Monitorea los logs regularmente para detectar actividad sospechosa
 
 ## 📚 Documentación Adicional
 
 - [Documentación de Perplexity API](https://docs.perplexity.ai/)
 - [Google Calendar API](https://developers.google.com/calendar)
 - [WhatsApp Web.js](https://wwebjs.dev/)
+- [Google Gemini API](https://ai.google.dev/docs)
 
 ## 🚀 Próximas Mejoras
 
@@ -358,10 +521,12 @@ node_modules/
 - [ ] Dashboard de administración
 - [ ] Notificaciones push
 - [ ] Historial de citas del cliente
+- [ ] Estadísticas y reportes
+- [ ] Integración con más proveedores de IA
 
 ## 📞 Soporte
 
-Para soporte técnico o preguntas sobre el bot, contacta al desarrollador.
+Para soporte técnico o preguntas sobre el bot, contacta al desarrollador o abre un issue en el repositorio.
 
 ---
 
