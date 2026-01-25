@@ -19,7 +19,9 @@ export class WhatsAppClient {
     this.client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
-        headless: process.env.WHATSAPP_HEADLESS === 'true',
+        // FORZAR EL USO DEL CHROMIUM DE NIXOS
+        executablePath: '/run/current-system/sw/bin/chromium',
+        headless: process.env.WHATSAPP_HEADLESS === 'true' || true, // Asegúrate de que sea true en server
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -27,7 +29,6 @@ export class WhatsAppClient {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--single-process',
           '--disable-gpu'
         ]
       }
