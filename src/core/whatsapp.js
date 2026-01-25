@@ -16,12 +16,20 @@ const QR_DIR = path.join(__dirname, "../../qr");
 
 export class WhatsAppClient {
   constructor() {
+    // Obtener la ruta de Chromium desde la variable de entorno o usar la de NixOS
+    const chromiumPath = process.env.PUPPETEER_EXECUTABLE_PATH || 
+                         '/run/current-system/sw/bin/chromium';
+    
+    // Directorio único para el perfil de usuario para evitar conflictos
+    const userDataDir = path.join(__dirname, '../../.wwebjs_auth/chromium-profile');
+    
     this.client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
-        // FORZAR EL USO DEL CHROMIUM DE NIXOS
-        executablePath: '/run/current-system/sw/bin/chromium',
-        headless: process.env.WHATSAPP_HEADLESS === 'true' || true, // Asegúrate de que sea true en server
+        // Usar Chromium de NixOS desde variable de entorno
+        executablePath: chromiumPath,
+        headless: process.env.WHATSAPP_HEADLESS !== 'false', // true por defecto en servidor
+        userDataDir: userDataDir, // Perfil único para evitar bloqueos
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -29,7 +37,27 @@ export class WhatsAppClient {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--disable-background-networking',
+          '--disable-sync',
+          '--disable-default-apps',
+          '--disable-background-timer-throttling',
+          '--disable-renderer-backgrounding',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--disable-notifications',
+          '--disable-prompt-on-repost',
+          '--disable-hang-monitor',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-features=AudioServiceOutOfProcess',
+          '--single-process' // Importante para evitar múltiples procesos
         ]
       }
     });
