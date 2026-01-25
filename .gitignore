@@ -23,7 +23,9 @@ qr/
 
 # Archivos de autenticación de Google
 auth_info/
-*.json
+# Archivos JSON específicos (NO package.json ni package-lock.json)
+token.json
+credentials.json
 
 # Logs
 logs/
