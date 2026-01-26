@@ -532,4 +532,4 @@ Para soporte técnico o preguntas sobre el bot, contacta al desarrollador o abre
 
 **Desarrollado con ❤️ para Cabelleros 💈**
 
-*Última actualización: Enero 2025*
+*Última actualización: Enero 2026*
