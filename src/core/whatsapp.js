@@ -18,6 +18,7 @@ export class WhatsAppClient {
   constructor() {
     this.client = new Client({
       authStrategy: new LocalAuth(),
+      markMessagesAsRead: false, // Deshabilitar marcado automático de mensajes como leídos
       puppeteer: {
         // FORZAR EL USO DEL CHROMIUM DE NIXOS
         executablePath: '/run/current-system/sw/bin/chromium',
@@ -96,7 +97,12 @@ export class WhatsAppClient {
             await messageHandler(message, phoneNumber, trimmedText);
           } catch (error) {
             console.error(`❌ [${phoneNumber}] Error al procesar mensaje:`, error);
-            await message.reply("❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.");
+            // Intentar enviar mensaje de error, pero no fallar si esto también falla
+            try {
+              await message.reply("❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.");
+            } catch (replyError) {
+              console.error(`❌ [${phoneNumber}] Error al enviar mensaje de error:`, replyError);
+            }
           }
         });
       } catch (error) {
