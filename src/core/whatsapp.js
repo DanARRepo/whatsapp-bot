@@ -24,13 +24,64 @@ export class WhatsAppClient {
         executablePath: '/run/current-system/sw/bin/chromium',
         headless: true, // true por defecto en servidor headless
         args: [
+          // Argumentos esenciales para headless sin display server
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-webgl',
+          '--disable-webgl2',
+          
+          // Modo headless completo (sin interfaz gráfica)
+          // Nota: headless: true en Puppeteer ya maneja esto, pero estos flags adicionales
+          // aseguran compatibilidad en NixOS minimal sin display server
+          '--headless=new',  // Usar nuevo modo headless (más eficiente)
+          '--disable-features=VizDisplayCompositor',  // Deshabilitar compositor visual
+          '--disable-gpu-sandbox',  // Deshabilitar sandbox de GPU (no disponible en headless)
+          
+          // Optimizaciones para hardware limitado (4GB RAM)
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-default-apps',
+          '--disable-extensions',
+          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+          '--disable-hang-monitor',
+          '--disable-ipc-flooding-protection',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-renderer-backgrounding',
+          '--disable-sync',
+          '--disable-translate',
+          '--metrics-recording-only',
+          '--mute-audio',
+          '--no-default-browser-check',
+          '--no-pings',
+          '--use-fake-ui-for-media-stream',
+          '--use-fake-device-for-media-stream',
+          
+          // Deshabilitar características que requieren interfaz gráfica
+          '--disable-notifications',
+          '--disable-infobars',
+          '--disable-session-crashed-bubble',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-features=AudioServiceOutOfProcess',
+          
+          // Límites de memoria
+          '--max_old_space_size=512',
+          '--js-flags=--max-old-space-size=512',
+          
+          // Reducir uso de recursos (sin --single-process porque whatsapp-web.js necesita múltiples procesos)
+          '--disable-features=site-per-process',  // Reducir procesos
+          '--disable-site-isolation-trials',  // Deshabilitar aislamiento de sitios para reducir memoria
         ]
       }
     });
@@ -81,11 +132,21 @@ export class WhatsAppClient {
    * Wrapper para message.reply que maneja errores de sendSeen
    * @param {Object} message - Objeto de mensaje de whatsapp-web.js
    * @param {string} content - Contenido a enviar
+   * @param {Function} originalReply - Método reply original (para evitar loops)
    */
-  async safeReply(message, content) {
+  async safeReply(message, content, originalReply) {
     try {
-      // Intentar usar reply normalmente
-      await message.reply(content);
+      // Usar el método original si está disponible, sino usar sendMessage directamente
+      if (originalReply) {
+        await originalReply.call(message, content);
+      } else {
+        // Enviar directamente usando sendMessage para evitar sendSeen
+        const chat = await message.getChat();
+        const chatId = chat.id._serialized || chat.id;
+        await this.client.sendMessage(chatId, content, {
+          linkPreview: false
+        });
+      }
     } catch (error) {
       // Capturar y analizar el error
       const errorMessage = error.message || String(error);
@@ -151,10 +212,12 @@ export class WhatsAppClient {
 
         // Procesar mensaje directamente (sin setImmediate para reducir latencia)
         try {
-          // Interceptar el método reply para usar safeReply
+          // Guardar el método reply original ANTES de interceptarlo
           const originalReply = message.reply.bind(message);
+          
+          // Interceptar el método reply para usar safeReply (pasando originalReply para evitar loops)
           message.reply = async (content) => {
-            return await this.safeReply(message, content);
+            return await this.safeReply(message, content, originalReply);
           };
           
           await messageHandler(message, phoneNumber, trimmedText);
@@ -171,7 +234,8 @@ export class WhatsAppClient {
           }
           // Solo intentar enviar mensaje de error si no es un error de sendSeen
           try {
-            await this.safeReply(message, "❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.");
+            const originalReply = message.reply?.bind(message) || null;
+            await this.safeReply(message, "❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.", originalReply);
           } catch (replyError) {
             console.error(`❌ [${phoneNumber}] Error al enviar mensaje de error:`, replyError.message || replyError);
           }
