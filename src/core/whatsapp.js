@@ -23,65 +23,20 @@ export class WhatsAppClient {
         // FORZAR EL USO DEL CHROMIUM DE NIXOS
         executablePath: '/run/current-system/sw/bin/chromium',
         headless: true, // true por defecto en servidor headless
+        // SOLO argumentos esenciales para evitar lentitud y problemas de estabilidad
         args: [
-          // Argumentos esenciales para headless sin display server
+          // Esenciales para headless sin display server
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
           '--disable-gpu',
-          '--disable-software-rasterizer',
-          '--disable-webgl',
-          '--disable-webgl2',
+          '--no-first-run',
           
-          // Modo headless completo (sin interfaz gráfica)
-          // Nota: headless: true en Puppeteer ya maneja esto, pero estos flags adicionales
-          // aseguran compatibilidad en NixOS minimal sin display server
-          '--headless=new',  // Usar nuevo modo headless (más eficiente)
-          '--disable-features=VizDisplayCompositor',  // Deshabilitar compositor visual
-          '--disable-gpu-sandbox',  // Deshabilitar sandbox de GPU (no disponible en headless)
-          
-          // Optimizaciones para hardware limitado (4GB RAM)
-          '--disable-background-networking',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-client-side-phishing-detection',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-default-apps',
+          // Optimizaciones básicas (mínimas)
           '--disable-extensions',
-          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
-          '--disable-hang-monitor',
-          '--disable-ipc-flooding-protection',
-          '--disable-popup-blocking',
-          '--disable-prompt-on-repost',
-          '--disable-renderer-backgrounding',
+          '--disable-default-apps',
           '--disable-sync',
-          '--disable-translate',
-          '--metrics-recording-only',
           '--mute-audio',
-          '--no-default-browser-check',
-          '--no-pings',
-          '--use-fake-ui-for-media-stream',
-          '--use-fake-device-for-media-stream',
-          
-          // Deshabilitar características que requieren interfaz gráfica
-          '--disable-notifications',
-          '--disable-infobars',
-          '--disable-session-crashed-bubble',
-          '--disable-component-update',
-          '--disable-domain-reliability',
-          '--disable-features=AudioServiceOutOfProcess',
-          
-          // Límites de memoria
-          '--max_old_space_size=512',
-          '--js-flags=--max-old-space-size=512',
-          
-          // Reducir uso de recursos (sin --single-process porque whatsapp-web.js necesita múltiples procesos)
-          '--disable-features=site-per-process',  // Reducir procesos
-          '--disable-site-isolation-trials',  // Deshabilitar aislamiento de sitios para reducir memoria
         ]
       }
     });
@@ -101,30 +56,62 @@ export class WhatsAppClient {
   setupEvents() {
     // Evento cuando se genera el QR
     this.client.on('qr', async (qr) => {
-      console.log("\n" + "=".repeat(50));
-      console.log("📱 ESCANEA ESTE QR CON WHATSAPP:");
-      console.log("=".repeat(50));
+      const timestamp = new Date().toISOString();
+      console.log(`\n[${timestamp}] ` + "=".repeat(50));
+      console.log(`[${timestamp}] 📱 ESCANEA ESTE QR CON WHATSAPP:`);
+      console.log(`[${timestamp}] ` + "=".repeat(50));
       qrcode.generate(qr, { small: true });
-      console.log("=".repeat(50));
-      console.log("1. Abre WhatsApp en tu teléfono");
-      console.log("2. Ve a Configuración > Dispositivos vinculados");
-      console.log("3. Toca 'Vincular un dispositivo'");
-      console.log("4. Escanea el QR de arriba");
-      console.log("=".repeat(50) + "\n");
+      console.log(`[${timestamp}] ` + "=".repeat(50));
+      console.log(`[${timestamp}] 1. Abre WhatsApp en tu teléfono`);
+      console.log(`[${timestamp}] 2. Ve a Configuración > Dispositivos vinculados`);
+      console.log(`[${timestamp}] 3. Toca 'Vincular un dispositivo'`);
+      console.log(`[${timestamp}] 4. Escanea el QR de arriba`);
+      console.log(`[${timestamp}] ` + "=".repeat(50) + "\n");
       
       // Guardar QR en archivo para acceso remoto
       await this.saveQRToFile(qr);
     });
 
+    // Evento cuando se autentica (después de escanear QR)
+    this.client.on('authenticated', () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] 🔐 Autenticación exitosa - Procesando sesión...`);
+    });
+
+    // Evento cuando se está cargando
+    this.client.on('loading_screen', (percent, message) => {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] ⏳ Cargando: ${percent}% - ${message || 'Inicializando...'}`);
+    });
+
     // Evento cuando se conecta exitosamente
     this.client.on('ready', () => {
-      console.log("✅ ¡Conectado a WhatsApp exitosamente!");
-      console.log("🤖 El bot está listo para recibir mensajes");
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] ✅ ¡Conectado a WhatsApp exitosamente!`);
+      console.log(`[${timestamp}] 🤖 El bot está listo para recibir mensajes`);
     });
 
     // Evento cuando se desconecta
     this.client.on('disconnected', (reason) => {
-      console.log("❌ Cliente desconectado:", reason);
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] ❌ Cliente desconectado. Razón: ${reason}`);
+      if (reason === 'NAVIGATION') {
+        console.log(`[${timestamp}] ⚠️ Desconexión por navegación - WhatsApp Web puede haber cambiado`);
+      } else if (reason === 'LOGOUT') {
+        console.log(`[${timestamp}] ⚠️ Sesión cerrada - Se generará nuevo QR`);
+      }
+    });
+
+    // Evento de error de autenticación
+    this.client.on('auth_failure', (msg) => {
+      const timestamp = new Date().toISOString();
+      console.error(`[${timestamp}] ❌ Error de autenticación:`, msg);
+    });
+
+    // Evento cuando se destruye la sesión
+    this.client.on('destroy', () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] 🔥 Cliente destruido`);
     });
   }
 
@@ -400,6 +387,17 @@ export class WhatsAppClient {
    * Inicializa el cliente de WhatsApp
    */
   async initialize() {
-    await this.client.initialize();
+    const startTime = Date.now();
+    console.log(`[${new Date().toISOString()}] 🚀 Iniciando cliente de WhatsApp...`);
+    
+    try {
+      await this.client.initialize();
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`[${new Date().toISOString()}] ✅ Cliente inicializado en ${duration}s`);
+    } catch (error) {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`[${new Date().toISOString()}] ❌ Error al inicializar cliente después de ${duration}s:`, error);
+      throw error;
+    }
   }
 }
