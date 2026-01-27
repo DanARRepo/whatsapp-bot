@@ -35,6 +35,15 @@ export class WhatsAppClient {
       }
     });
     
+    // Set para deduplicar mensajes procesados
+    this.processedMessages = new Set();
+    // Limpiar mensajes procesados después de 5 minutos para evitar memory leak
+    setInterval(() => {
+      if (this.processedMessages.size > 1000) {
+        this.processedMessages.clear();
+      }
+    }, 5 * 60 * 1000);
+    
     this.setupEvents();
   }
 
@@ -69,6 +78,47 @@ export class WhatsAppClient {
   }
 
   /**
+   * Wrapper para message.reply que maneja errores de sendSeen
+   * @param {Object} message - Objeto de mensaje de whatsapp-web.js
+   * @param {string} content - Contenido a enviar
+   */
+  async safeReply(message, content) {
+    try {
+      // Intentar usar reply normalmente
+      await message.reply(content);
+    } catch (error) {
+      // Capturar y analizar el error
+      const errorMessage = error.message || String(error);
+      const errorStack = error.stack || '';
+      
+      // Verificar si es un error de sendSeen/markedUnread
+      const isSendSeenError = 
+        errorMessage.includes('markedUnread') || 
+        errorMessage.includes('sendSeen') ||
+        errorMessage.includes('Cannot read properties of undefined') ||
+        errorStack.includes('sendSeen');
+      
+      if (isSendSeenError) {
+        // El error es de sendSeen, el mensaje probablemente se envió correctamente
+        console.warn(`⚠️ [${message.from}] Error de sendSeen ignorado - mensaje enviado`);
+        return; // Continuar como si fuera exitoso
+      }
+      
+      // Si no es un error de sendSeen, intentar enviar directamente
+      try {
+        const chat = await message.getChat();
+        const chatId = chat.id._serialized || chat.id;
+        await this.client.sendMessage(chatId, content, {
+          linkPreview: false
+        });
+      } catch (sendError) {
+        // Si también falla sendMessage, re-lanzar el error original
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Configura el handler de mensajes
    * @param {Function} messageHandler - Función que procesa los mensajes
    */
@@ -77,6 +127,14 @@ export class WhatsAppClient {
       try {
         // Ignorar mensajes del bot
         if (message.fromMe) return;
+
+        // DEDUPLICACIÓN: Verificar si ya procesamos este mensaje
+        const messageId = message.id._serialized || message.id;
+        if (this.processedMessages.has(messageId)) {
+          console.log(`⏭️ [${message.from}] Mensaje duplicado ignorado: ${messageId}`);
+          return;
+        }
+        this.processedMessages.add(messageId);
 
         const text = message.body?.toLowerCase() || "";
         const from = message.from;
@@ -91,20 +149,33 @@ export class WhatsAppClient {
 
         console.log(`📨 [${phoneNumber}] Mensaje: "${trimmedText}"`);
 
-        // Procesar mensaje de forma asíncrona para no bloquear otras sesiones
-        setImmediate(async () => {
-          try {
-            await messageHandler(message, phoneNumber, trimmedText);
-          } catch (error) {
-            console.error(`❌ [${phoneNumber}] Error al procesar mensaje:`, error);
-            // Intentar enviar mensaje de error, pero no fallar si esto también falla
-            try {
-              await message.reply("❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.");
-            } catch (replyError) {
-              console.error(`❌ [${phoneNumber}] Error al enviar mensaje de error:`, replyError);
-            }
+        // Procesar mensaje directamente (sin setImmediate para reducir latencia)
+        try {
+          // Interceptar el método reply para usar safeReply
+          const originalReply = message.reply.bind(message);
+          message.reply = async (content) => {
+            return await this.safeReply(message, content);
+          };
+          
+          await messageHandler(message, phoneNumber, trimmedText);
+          
+          // Restaurar el método original después de procesar
+          message.reply = originalReply;
+        } catch (error) {
+          console.error(`❌ [${phoneNumber}] Error al procesar mensaje:`, error);
+          // NO intentar enviar mensaje de error si el error es de sendSeen
+          // porque eso causará un loop de errores
+          if (error.message && error.message.includes('markedUnread')) {
+            console.warn(`⚠️ [${phoneNumber}] Error de sendSeen ignorado`);
+            return;
           }
-        });
+          // Solo intentar enviar mensaje de error si no es un error de sendSeen
+          try {
+            await this.safeReply(message, "❌ Ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo.");
+          } catch (replyError) {
+            console.error(`❌ [${phoneNumber}] Error al enviar mensaje de error:`, replyError.message || replyError);
+          }
+        }
       } catch (error) {
         console.error("❌ Error general al procesar mensaje:", error);
       }
