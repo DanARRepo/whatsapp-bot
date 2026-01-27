@@ -353,6 +353,105 @@ GEMINI_API_KEY=tu_api_key
 
 ## 🚀 Despliegue en Producción
 
+### Actualización en el Servidor
+
+Cuando trabajas con el bot en un servidor de producción, es importante configurar Git correctamente para evitar problemas con ramas divergentes.
+
+#### Configuración Recomendada
+
+**Opción 1: Rebase (Recomendado - Historial limpio)**
+```bash
+# En el servidor, configura Git para usar rebase automáticamente
+git config pull.rebase true
+
+# O configúralo globalmente para todos los repositorios
+git config --global pull.rebase true
+```
+
+**Opción 2: Fast-forward only (Más seguro - Solo actualizaciones simples)**
+```bash
+# Solo permite actualizaciones cuando no hay divergencia
+git config pull.ff only
+```
+
+**Opción 3: Merge (Preserva todo el historial)**
+```bash
+# Crea commits de merge para preservar historial completo
+git config pull.rebase false
+```
+
+#### Script de Actualización Automática
+
+El proyecto incluye un script para facilitar las actualizaciones en el servidor:
+
+```bash
+# Actualizar desde la rama main
+./scripts/update-server.sh main
+
+# Actualizar desde otra rama
+./scripts/update-server.sh fix/whatsapp-client
+```
+
+El script:
+- ✅ Verifica que no haya cambios locales sin commitear
+- ✅ Cambia a la rama especificada
+- ✅ Descarga los últimos cambios
+- ✅ Aplica cambios con rebase (historial limpio)
+- ✅ Reinstala dependencias si `package.json` cambió
+- ✅ Proporciona instrucciones claras en caso de errores
+
+#### Actualización Manual
+
+Si prefieres hacerlo manualmente:
+
+```bash
+# 1. Cambiar a la rama principal
+git checkout main
+
+# 2. Descargar cambios remotos
+git fetch origin
+
+# 3. Actualizar con rebase (recomendado)
+git pull --rebase origin main
+
+# O con merge
+git pull origin main
+
+# 4. Si hay conflictos, resolverlos y continuar
+# Con rebase:
+git rebase --continue
+
+# Con merge:
+git commit  # (después de resolver conflictos)
+
+# 5. Si package.json cambió, reinstalar dependencias
+npm install --legacy-peer-deps
+
+# 6. Reiniciar el servicio
+sudo systemctl restart whatsapp-bot
+```
+
+#### Resolver Divergencia de Ramas
+
+Si Git te indica que hay ramas divergentes:
+
+**Opción A: Rebase (mantiene historial lineal)**
+```bash
+git pull --rebase origin main
+```
+
+**Opción B: Merge (preserva historial completo)**
+```bash
+git pull --no-rebase origin main
+```
+
+**Opción C: Forzar actualización (⚠️ pierde cambios locales)**
+```bash
+# Solo si estás seguro de que no necesitas los cambios locales
+git fetch origin
+git reset --hard origin/main
+```
+
 ### Despliegue en NixOS
 
 El proyecto incluye un `flake.nix` que define todas las dependencias necesarias para ejecutar el bot en NixOS, incluyendo Chromium y todas sus dependencias del sistema.
