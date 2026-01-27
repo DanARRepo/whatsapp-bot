@@ -13,17 +13,29 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const QR_DIR = path.join(__dirname, "../../qr");
+const AUTH_DIR = path.join(__dirname, "../../.wwebjs_auth");
 
 export class WhatsAppClient {
   constructor() {
+    // Asegurar que el directorio de autenticación existe
+    if (!fs.existsSync(AUTH_DIR)) {
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+    }
+
     this.client = new Client({
-      authStrategy: new LocalAuth(),
+      authStrategy: new LocalAuth({
+        dataPath: AUTH_DIR, // Directorio específico para la sesión
+        clientId: 'whatsapp-bot' // ID único para esta instancia
+      }),
       markMessagesAsRead: false, // Deshabilitar marcado automático de mensajes como leídos
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51.html',
+      },
       puppeteer: {
         // FORZAR EL USO DEL CHROMIUM DE NIXOS
         executablePath: '/run/current-system/sw/bin/chromium',
         headless: true, // true por defecto en servidor headless
-        // SOLO argumentos esenciales para evitar lentitud y problemas de estabilidad
         args: [
           // Esenciales para headless sin display server
           '--no-sandbox',
@@ -31,6 +43,14 @@ export class WhatsAppClient {
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--no-first-run',
+          
+          // Evitar detección de bot (CRÍTICO para mantener sesión)
+          '--disable-blink-features=AutomationControlled', // Ocultar que es automatizado
+          '--disable-features=IsolateOrigins,site-per-process', // Evitar detección
+          '--disable-web-security', // Permitir acceso a recursos
+          
+          // User agent realista (Chrome en Linux)
+          '--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           
           // Optimizaciones básicas (mínimas)
           '--disable-extensions',
@@ -89,6 +109,7 @@ export class WhatsAppClient {
       const timestamp = new Date().toISOString();
       console.log(`[${timestamp}] ✅ ¡Conectado a WhatsApp exitosamente!`);
       console.log(`[${timestamp}] 🤖 El bot está listo para recibir mensajes`);
+      console.log(`[${timestamp}] 💾 Sesión guardada en: ${AUTH_DIR}`);
     });
 
     // Evento cuando se desconecta
@@ -99,6 +120,9 @@ export class WhatsAppClient {
         console.log(`[${timestamp}] ⚠️ Desconexión por navegación - WhatsApp Web puede haber cambiado`);
       } else if (reason === 'LOGOUT') {
         console.log(`[${timestamp}] ⚠️ Sesión cerrada - Se generará nuevo QR`);
+        console.log(`[${timestamp}] 💡 Si esto ocurre frecuentemente, puede ser detección de bot`);
+      } else if (reason === 'CONNECTION_CLOSED') {
+        console.log(`[${timestamp}] ⚠️ Conexión cerrada - Verificando sesión guardada...`);
       }
     });
 
@@ -389,6 +413,7 @@ export class WhatsAppClient {
   async initialize() {
     const startTime = Date.now();
     console.log(`[${new Date().toISOString()}] 🚀 Iniciando cliente de WhatsApp...`);
+    console.log(`[${new Date().toISOString()}] 💾 Directorio de sesión: ${AUTH_DIR}`);
     
     try {
       await this.client.initialize();
